@@ -1,0 +1,97 @@
+{
+  "theme": "light",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "brand_colors": {
+    "primary": "#6E1A1A",
+    "primary_hover": "#8B1A1A",
+    "background": "#F9F9FB",
+    "surface": "#FFFFFF",
+    "border": "#E2E8F0",
+    "text_main": "#0F172A",
+    "text_muted": "#64748B",
+    "success": "#166534",
+    "warning": "#854D0E",
+    "danger": "#991B1B",
+    "info": "#1E3A8A"
+  },
+  "typography": {
+    "heading_font": "Chivo",
+    "body_font": "IBM Plex Sans",
+    "rules": {
+      "h1": "text-3xl font-bold tracking-tight text-[#0F172A]",
+      "h2": "text-xl font-semibold tracking-tight text-[#0F172A]",
+      "h3": "text-lg font-medium text-[#0F172A]",
+      "body": "text-sm leading-relaxed text-[#0F172A]",
+      "label": "text-xs font-semibold tracking-[0.05em] uppercase text-[#64748B]",
+      "data_value": "text-sm font-medium text-[#0F172A]"
+    }
+  },
+  "layout_and_spacing": {
+    "philosophy": "Control Room Grid. High density, precise alignment, exposed skeleton.",
+    "dashboard_grid": "grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6",
+    "panels": "bg-white border border-[#E2E8F0] rounded-sm p-4 md:p-6",
+    "app_container": "h-screen w-full flex overflow-hidden bg-[#F9F9FB]",
+    "sidebar": "w-64 flex-shrink-0 bg-white border-r border-[#E2E8F0] flex flex-col h-full",
+    "main_content": "flex-1 overflow-auto p-6 md:p-8"
+  },
+  "surface_styles": {
+    "default_panel": "bg-white border border-[#E2E8F0] shadow-sm rounded-sm",
+    "interactive_row": "hover:bg-[#F8FAFC] transition-colors border-b border-[#E2E8F0]",
+    "read_only_field": "p-3 bg-[#F8FAFC] border border-transparent rounded-sm flex flex-col gap-1",
+    "edit_mode_field": "bg-white border border-[#E2E8F0] rounded-sm focus-visible:ring-1 focus-visible:ring-[#6E1A1A]"
+  },
+  "components": {
+    "buttons": {
+      "primary": "bg-[#6E1A1A] text-white hover:bg-[#8B1A1A] rounded-sm px-4 py-2 font-medium transition-colors",
+      "secondary": "bg-white text-[#0F172A] border border-[#E2E8F0] hover:bg-[#F1F5F9] rounded-sm px-4 py-2 font-medium transition-colors",
+      "ghost": "text-[#64748B] hover:text-[#0F172A] hover:bg-[#F1F5F9] rounded-sm px-4 py-2 transition-colors"
+    },
+    "tables": {
+      "container": "border border-[#E2E8F0] rounded-sm bg-white overflow-hidden",
+      "header": "bg-[#F8FAFC] text-xs font-semibold uppercase tracking-wider text-[#64748B] border-b border-[#E2E8F0] py-3 px-4 text-left",
+      "cell": "py-3 px-4 text-sm border-b border-[#E2E8F0] text-[#0F172A]"
+    },
+    "sidebar_nav": {
+      "item": "flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium transition-colors text-[#64748B] hover:bg-[#F1F5F9] hover:text-[#0F172A]",
+      "active_item": "flex items-center gap-3 px-3 py-2 rounded-sm text-sm font-medium bg-[#FFF1F1] text-[#6E1A1A]"
+    },
+    "status_badges": {
+      "in_use": "bg-green-100 text-green-800 border border-green-200 px-2 py-0.5 rounded-sm text-xs font-medium",
+      "in_storage": "bg-slate-100 text-slate-800 border border-slate-200 px-2 py-0.5 rounded-sm text-xs font-medium",
+      "under_repair": "bg-yellow-100 text-yellow-800 border border-yellow-200 px-2 py-0.5 rounded-sm text-xs font-medium",
+      "warranty_expiring": "bg-red-100 text-red-800 border border-red-200 px-2 py-0.5 rounded-sm text-xs font-medium"
+    }
+  },
+  "icons": {
+    "library": "lucide-react",
+    "stroke_width": "2",
+    "size": "16"
+  },
+  "media": {
+    "images": [
+      {
+        "category": "brand_logo",
+        "url": "https://customer-assets.emergentagent.com/job_hardware-inventory-22/artifacts/c9ejrxq4_Sens_logo.png",
+        "description": "Sens company logo - dark red/maroon organic shape with wordmark. Display prominently on login screen and dashboard sidebar."
+      },
+      {
+        "category": "login_background",
+        "url": "https://images.pexels.com/photos/7078393/pexels-photo-7078393.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=650&w=940",
+        "description": "Minimalist geometric architectural white texture for the login screen background. Ensures a clean corporate vibe while the logo stands out in the foreground."
+      }
+    ]
+  },
+  "instructions_to_main_agent": [
+    "Build the dashboard using pure HTML/Tailwind for the strict layout (Sidebar + Main Content). Do not use generic full-page generic wrappers if they break the control room grid format.",
+    "Use Shadcn components extensively for inputs, tables, dropdowns, and dialogs.",
+    "Implement a strict Read-Only mode for the Asset Detail view by default. Display labels (uppercase, tiny) and values cleanly. Include an 'Edit' button that unlocks the fields, transforming them into Shadcn Form inputs.",
+    "Never center-align the main dashboard content. Left-align data tables and forms for scannability.",
+    "Apply rounded-sm (2px to 4px border radius) to all cards and buttons to match the technical Swiss archetype.",
+    "Ensure all interactive elements and form inputs contain a descriptive `data-testid` attribute (e.g., `data-testid='login-button'`).",
+    "Do not use dark mode. This is an explicitly Light theme corporate tool.",
+    "Render the login page with the `login_background` image covering the screen (or in a split-screen layout) and the `brand_logo` clearly visible in the auth card.",
+    "Dashboard KPIs should use clear, dense bento-style grids with the primary maroon accent for key numbers.",
+    "Table row heights should be compact to accommodate high data density. Use zebra striping or crisp 1px borders for row separation.",
+    "Conditional fields (e.g., Technical Specs only for Laptops/Desktops) should be handled dynamically in the UI so space is not wasted on irrelevant asset types."
+  ]
+}
