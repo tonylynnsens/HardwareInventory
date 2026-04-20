@@ -169,6 +169,7 @@ export default function AssetDetail() {
         const { data } = await api.post("/assets", payload);
         toast.success(`Asset ${data.asset_id} created`);
         navigate(`/assets/${data.id}`);
+        setEditing(false);
       } else {
         const { data } = await api.put(`/assets/${id}`, payload);
         const normalized = { ...EMPTY, ...data };
