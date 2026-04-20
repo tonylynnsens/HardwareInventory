@@ -9,6 +9,7 @@ import {
   Tags,
   Settings as SettingsIcon,
   LogOut,
+  FileText,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { LOGO_URL } from "@/lib/api";
@@ -20,6 +21,7 @@ const NAV = [
   { to: "/employees", label: "Employees", icon: Users },
   { to: "/locations", label: "Locations", icon: MapPin },
   { to: "/categories", label: "Categories", icon: Tags },
+  { to: "/reports", label: "Reports", icon: FileText },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
 ];
 

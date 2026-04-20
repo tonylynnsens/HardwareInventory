@@ -71,3 +71,15 @@
 @layer base {
   [data-debug-wrapper="true"] { display: contents !important; }
 }
+
+@media print {
+  aside, [data-print-hide="true"] { display: none !important; }
+  body, html { background: white !important; }
+  main { padding: 0 !important; overflow: visible !important; }
+  .panel { border: 1px solid #ddd !important; box-shadow: none !important; page-break-inside: avoid; }
+  table { page-break-inside: auto; }
+  tr { page-break-inside: avoid; page-break-after: auto; }
+  thead { display: table-header-group; }
+  .print-break { page-break-before: always; }
+  @page { margin: 14mm; }
+}

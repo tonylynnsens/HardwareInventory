@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api, formatApiError } from "@/lib/api";
 import Layout, { PageHeader } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
@@ -7,17 +7,24 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
-import { Plus, Pencil, Trash2, Upload, Download, FileSpreadsheet } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Plus, Pencil, Trash2, Upload, Download, FileSpreadsheet, Rows3, Table2 } from "lucide-react";
+import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
 const EMPTY = { name: "", department: "", manager: "" };
 
 export default function Employees() {
   const [rows, setRows] = useState([]);
+  const [assets, setAssets] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [view, setView] = useState("list"); // list | spreadsheet
+
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(EMPTY);
+
   const [importOpen, setImportOpen] = useState(false);
   const [importFile, setImportFile] = useState(null);
   const [importing, setImporting] = useState(false);
@@ -27,12 +34,32 @@ export default function Employees() {
   const load = async () => {
     setLoading(true);
     try {
-      const { data } = await api.get("/employees");
-      setRows(data);
-    } finally { setLoading(false); }
+      const [e, a, c] = await Promise.all([
+        api.get("/employees"),
+        api.get("/assets"),
+        api.get("/categories"),
+      ]);
+      setRows(e.data);
+      setAssets(a.data);
+      setCategories(c.data);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => { load(); }, []);
+
+  const catMap = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c.name])), [categories]);
+
+  // employee_id → [{asset_id, category, model, manufacturer, status}]
+  const assetsByEmployee = useMemo(() => {
+    const map = {};
+    for (const a of assets) {
+      if (!a.assigned_to_id) continue;
+      (map[a.assigned_to_id] ||= []).push(a);
+    }
+    return map;
+  }, [assets]);
 
   const startNew = () => { setEditing(null); setForm(EMPTY); setOpen(true); };
   const startEdit = (r) => { setEditing(r); setForm({ name: r.name, department: r.department || "", manager: r.manager || "" }); setOpen(true); };
@@ -120,39 +147,34 @@ export default function Employees() {
         }
       />
 
-      <div className="panel overflow-hidden" data-testid="employees-table">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="bg-surface-alt border-b border-line">
-              {["Name", "Department", "Manager", ""].map((h) => (
-                <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-3 px-4">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading && <tr><td colSpan={4} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
-            {!loading && rows.length === 0 && (
-              <tr><td colSpan={4} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
-            )}
-            {rows.map((r) => (
-              <tr key={r.id} className="border-b border-line hover:bg-surface-alt" data-testid={`emp-row-${r.id}`}>
-                <td className="py-3 px-4 text-ink font-medium">{r.name}</td>
-                <td className="py-3 px-4 text-ink-muted">{r.department || "—"}</td>
-                <td className="py-3 px-4 text-ink-muted">{r.manager || "—"}</td>
-                <td className="py-3 px-4 text-right space-x-3">
-                  <button onClick={() => startEdit(r)} className="text-ink-muted hover:text-ink text-xs inline-flex items-center gap-1" data-testid={`edit-emp-${r.id}`}>
-                    <Pencil size={12} /> Edit
-                  </button>
-                  <button onClick={() => del(r.id)} className="text-red-700 hover:underline text-xs inline-flex items-center gap-1" data-testid={`del-emp-${r.id}`}>
-                    <Trash2 size={12} /> Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+      <div className="flex items-center gap-3 mb-4" data-testid="view-toggle">
+        <Tabs value={view} onValueChange={setView}>
+          <TabsList className="bg-white border border-line rounded-sm p-0.5">
+            <TabsTrigger value="list" data-testid="view-list" className="rounded-sm data-[state=active]:bg-brand data-[state=active]:text-white text-xs font-semibold uppercase tracking-wider px-3">
+              <Rows3 size={13} className="mr-1.5" /> List
+            </TabsTrigger>
+            <TabsTrigger value="spreadsheet" data-testid="view-spreadsheet" className="rounded-sm data-[state=active]:bg-brand data-[state=active]:text-white text-xs font-semibold uppercase tracking-wider px-3">
+              <Table2 size={13} className="mr-1.5" /> Spreadsheet
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        <div className="text-xs text-ink-muted ml-2">
+          {rows.length} employees · {assets.filter((a) => a.assigned_to_id).length} assets assigned
+        </div>
       </div>
 
+      {view === "list" ? (
+        <ListView rows={rows} loading={loading} onEdit={startEdit} onDelete={del} />
+      ) : (
+        <SpreadsheetView
+          rows={rows}
+          loading={loading}
+          assetsByEmployee={assetsByEmployee}
+          catMap={catMap}
+        />
+      )}
+
+      {/* Edit / New Dialog */}
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>{editing ? "Edit Employee" : "New Employee"}</DialogTitle></DialogHeader>
@@ -215,18 +237,13 @@ export default function Employees() {
               />
               {importFile && (
                 <div className="text-xs text-ink-muted mt-2">
-                  Selected: <span className="font-medium text-ink">{importFile.name}</span>
-                  {" · "}
-                  {Math.round(importFile.size / 1024)} KB
+                  Selected: <span className="font-medium text-ink">{importFile.name}</span> · {Math.round(importFile.size / 1024)} KB
                 </div>
               )}
             </div>
 
             {importResult && (
-              <div
-                className="rounded-sm border border-line bg-surface-alt p-4 text-sm"
-                data-testid="import-result"
-              >
+              <div className="rounded-sm border border-line bg-surface-alt p-4 text-sm" data-testid="import-result">
                 <div className="font-heading font-semibold text-ink mb-2">Import complete</div>
                 <div className="grid grid-cols-3 gap-3 text-center">
                   <div>
@@ -253,12 +270,7 @@ export default function Employees() {
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setImportOpen(false)} className="rounded-sm">Close</Button>
-            <Button
-              onClick={runImport}
-              disabled={importing || !importFile}
-              data-testid="import-submit"
-              className="bg-brand hover:bg-brand-hover text-white rounded-sm"
-            >
+            <Button onClick={runImport} disabled={importing || !importFile} data-testid="import-submit" className="bg-brand hover:bg-brand-hover text-white rounded-sm">
               <Upload size={14} className="mr-2" />
               {importing ? "Importing…" : "Import"}
             </Button>
@@ -266,5 +278,95 @@ export default function Employees() {
         </DialogContent>
       </Dialog>
     </Layout>
+  );
+}
+
+function ListView({ rows, loading, onEdit, onDelete }) {
+  return (
+    <div className="panel overflow-hidden" data-testid="employees-table">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="bg-surface-alt border-b border-line">
+            {["Name", "Department", "Manager", ""].map((h) => (
+              <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-3 px-4">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {loading && <tr><td colSpan={4} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
+          {!loading && rows.length === 0 && (
+            <tr><td colSpan={4} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
+          )}
+          {rows.map((r) => (
+            <tr key={r.id} className="border-b border-line hover:bg-surface-alt" data-testid={`emp-row-${r.id}`}>
+              <td className="py-3 px-4 text-ink font-medium">{r.name}</td>
+              <td className="py-3 px-4 text-ink-muted">{r.department || "—"}</td>
+              <td className="py-3 px-4 text-ink-muted">{r.manager || "—"}</td>
+              <td className="py-3 px-4 text-right space-x-3">
+                <button onClick={() => onEdit(r)} className="text-ink-muted hover:text-ink text-xs inline-flex items-center gap-1" data-testid={`edit-emp-${r.id}`}>
+                  <Pencil size={12} /> Edit
+                </button>
+                <button onClick={() => onDelete(r.id)} className="text-red-700 hover:underline text-xs inline-flex items-center gap-1" data-testid={`del-emp-${r.id}`}>
+                  <Trash2 size={12} /> Delete
+                </button>
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function SpreadsheetView({ rows, loading, assetsByEmployee, catMap }) {
+  return (
+    <div className="panel overflow-auto" data-testid="employees-spreadsheet">
+      <table className="w-full text-sm border-collapse">
+        <thead>
+          <tr className="bg-surface-alt border-b border-line sticky top-0">
+            {["Employee", "Department", "Manager", "# Items", "Equipment"].map((h) => (
+              <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-3 px-4 border-r border-line last:border-r-0">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {loading && <tr><td colSpan={5} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
+          {!loading && rows.length === 0 && (
+            <tr><td colSpan={5} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
+          )}
+          {rows.map((r) => {
+            const items = assetsByEmployee[r.id] || [];
+            return (
+              <tr key={r.id} className="border-b border-line align-top hover:bg-surface-alt" data-testid={`sheet-row-${r.id}`}>
+                <td className="py-3 px-4 text-ink font-medium border-r border-line whitespace-nowrap">{r.name}</td>
+                <td className="py-3 px-4 text-ink-muted border-r border-line whitespace-nowrap">{r.department || "—"}</td>
+                <td className="py-3 px-4 text-ink-muted border-r border-line whitespace-nowrap">{r.manager || "—"}</td>
+                <td className="py-3 px-4 font-mono text-ink border-r border-line text-center">{items.length}</td>
+                <td className="py-3 px-4">
+                  {items.length === 0 ? (
+                    <span className="text-ink-muted text-xs italic">No equipment assigned</span>
+                  ) : (
+                    <ul className="space-y-1">
+                      {items.map((a) => (
+                        <li key={a.id} className="text-xs">
+                          <Link to={`/assets/${a.id}`} className="font-mono text-brand hover:underline">{a.asset_id}</Link>
+                          <span className="text-ink-muted"> · {catMap[a.category_id] || "—"}</span>
+                          {(a.manufacturer || a.model) && (
+                            <span className="text-ink"> · {a.manufacturer} {a.model}</span>
+                          )}
+                          {a.status && a.status !== "In Use" && (
+                            <span className="text-ink-muted"> ({a.status})</span>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
