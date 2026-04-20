@@ -1,0 +1,38 @@
+{
+  "summary": "Iteration 2 frontend e2e — /assets/new route fix VERIFIED (form renders correctly). Mobile hides Tech Specs, Laptop shows it. Auto-generated asset_id (LAP-0003) works. Existing-asset locked/edit/save/cancel/delete cycle works. Maintenance global (new-maint-btn) and inline on asset detail both add+delete work. Assets tabs (5), search, dept-filter all functional. Settings change-password toasts correct (wrong current, mismatch, success), Admin2 password rotate + reset verified. Logout returns to /login. ONE CRITICAL BUG: after saving a NEW asset, the form stays in EDIT mode (editing state not reset) — edit-btn not shown, save-btn still visible; page reload shows locked correctly.",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "AssetDetail.jsx (new asset post-save flow)",
+        "issue": "After POST /assets succeeds and navigate(`/assets/${data.id}`) runs, `editing` state stays true so the form remains editable instead of switching to LOCKED read-only mode. Test req expects edit-btn visible and no inputs after save. Reloading the page fixes it (component remounts with isNew=false → editing=false), which proves the only missing piece is a setEditing(false) call in the isNew branch of save(). Repro: /assets/new → pick any category → fill fields → Save → stays on edit form with save-btn visible, no Lock badge, no edit-btn.",
+        "selector": "[data-testid=\"edit-btn\"] missing after save; [data-testid=\"save-btn\"] still present",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "In /app/frontend/src/pages/AssetDetail.jsx inside save(), isNew branch: after navigate(`/assets/${data.id}`) add `setEditing(false);` (and optionally setOriginal(normalized) using the response) so the just-created asset immediately renders in LOCKED mode as the spec requires.",
+    "Optional: the 2× 401 console errors observed on /login are from the initial GET /api/auth/me probe before login — not a functional bug, but could be silenced by treating 401 as expected on the login page."
+  ],
+  "critical_code_review_comments": [
+    "AssetDetail.save() isNew path calls navigate() but does not reset `editing` to false. The useEffect re-runs loadAsset on new id, but state `editing` was initialized to isNew (true) and never gets reset when id transitions from 'new' → uuid. Must explicitly setEditing(false) after the navigate in the isNew branch.",
+    "Consider unifying maintenance 'add' testids between the two pages (global page uses `new-maint-btn`/`dlg-maint-*`, asset detail uses `add-maintenance-btn`/`maint-*`) — minor but easier for testers.",
+    "AssetDetail loadRefs and loadAsset both run on id change; loadRefs reloads employees/categories/locations unnecessarily on every id change. Memoise or gate on first mount only.",
+    "Dept filter on /assets works but the dropdown only showed 2 options in my run (likely 'All Departments' + one existing dept). Seed data may not include diverse departments; not a bug."
+  ],
+  "updated_files": [],
+  "success_rate": {"backend": "100% (per iteration 1)", "frontend": "~93% — 13/14 flows pass; only new-asset→locked-mode transition broken"},
+  "test_credentials": "Admin/nothing and Admin2/nothing2 (both work; Admin2 used for the live change-password round-trip and was reset back to nothing2 at the end)",
+  "seed_data_creation": "Created/deleted multiple TEST assets (LAP-0003 left existing with AcmeEditTest after successful edit-save test). One TESTE2E_<ts> employee was also left from a creation attempt. These are benign test artefacts.",
+  "retest_needed": true,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Only remaining blocker is the new-asset→locked-mode transition. After main agent adds setEditing(false) in AssetDetail.jsx save() isNew branch, re-verify: (1) POST /assets via UI → edit-btn appears, save-btn disappears without page reload, (2) Lock icon/'LOCKED' badge visible in header. All other flows (login, tabs, search, dept-filter, maintenance global+inline, settings change-password incl. success path, logout) are green. Test file at /app/backend/tests/backend_test.py unchanged.",
+  "rca of the issue": "AssetDetail.jsx uses `const isNew = id === 'new';` and `const [editing, setEditing] = useState(isNew);`. On a new-asset save, api.post succeeds, then navigate(`/assets/${data.id}`) swaps the URL param. Component does NOT unmount — it's the same <Route path='/assets/:id'> — so useState 'editing' retains its previous value (true). useEffect([id]) fires loadAsset() which correctly sets form/original but never touches `editing`. Fix: add `setEditing(false)` immediately after navigate in the isNew branch of save(), e.g.:\n\n  if (isNew) {\n    const { data } = await api.post('/assets', payload);\n    toast.success(`Asset ${data.asset_id} created`);\n    navigate(`/assets/${data.id}`);\n    setEditing(false);\n  }\n\nThis lets the locked-mode UI (Edit button, LOCKED badge, ReadField views) render as designed."
+}
