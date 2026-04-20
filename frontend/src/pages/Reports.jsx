@@ -147,6 +147,7 @@ function EmployeesReport({ employees, assetsByEmp, catMap }) {
           <tr className="bg-surface-alt">
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">Employee</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">Department</th>
+            <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">Location</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">Manager</th>
             <th className="text-center text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line w-16">#</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">Equipment</th>
@@ -159,6 +160,7 @@ function EmployeesReport({ employees, assetsByEmp, catMap }) {
               <tr key={e.id} className="align-top">
                 <td className="py-2 px-3 border border-line font-medium text-ink whitespace-nowrap">{e.name}</td>
                 <td className="py-2 px-3 border border-line text-ink-muted whitespace-nowrap">{e.department || "—"}</td>
+                <td className="py-2 px-3 border border-line text-ink-muted whitespace-nowrap">{e.location || "—"}</td>
                 <td className="py-2 px-3 border border-line text-ink-muted whitespace-nowrap">{e.manager || "—"}</td>
                 <td className="py-2 px-3 border border-line text-center font-mono">{items.length}</td>
                 <td className="py-2 px-3 border border-line">
@@ -179,7 +181,7 @@ function EmployeesReport({ employees, assetsByEmp, catMap }) {
               </tr>
             );
           })}
-          {sorted.length === 0 && <tr><td colSpan={5} className="text-center py-8 text-ink-muted border border-line">No employees.</td></tr>}
+          {sorted.length === 0 && <tr><td colSpan={6} className="text-center py-8 text-ink-muted border border-line">No employees.</td></tr>}
         </tbody>
       </table>
     </>
@@ -215,6 +217,7 @@ function DepartmentsReport({ employees, assetsByEmp, catMap }) {
               <thead>
                 <tr className="bg-surface-alt">
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">Employee</th>
+                  <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">Location</th>
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">Manager</th>
                   <th className="text-center text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line w-16">#</th>
                   <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">Equipment</th>
@@ -226,6 +229,7 @@ function DepartmentsReport({ employees, assetsByEmp, catMap }) {
                   return (
                     <tr key={e.id} className="align-top">
                       <td className="py-2 px-3 border border-line font-medium text-ink">{e.name}</td>
+                      <td className="py-2 px-3 border border-line text-ink-muted">{e.location || "—"}</td>
                       <td className="py-2 px-3 border border-line text-ink-muted">{e.manager || "—"}</td>
                       <td className="py-2 px-3 border border-line text-center font-mono">{items.length}</td>
                       <td className="py-2 px-3 border border-line">

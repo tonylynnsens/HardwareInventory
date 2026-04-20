@@ -114,6 +114,7 @@ class CategoryOut(CategoryIn):
 class EmployeeIn(BaseModel):
     name: str
     department: Optional[str] = ""
+    location: Optional[str] = ""
     manager: Optional[str] = ""
 
 
@@ -319,6 +320,7 @@ async def import_employees(file: UploadFile = File(...), _=Depends(get_current_u
                 "id": str(uuid.uuid4()),
                 "name": name,
                 "department": normalised.get("department", ""),
+                "location": normalised.get("location", ""),
                 "manager": normalised.get("manager", ""),
             }
         )

@@ -12,7 +12,7 @@ import { Plus, Pencil, Trash2, Upload, Download, FileSpreadsheet, Rows3, Table2 
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
-const EMPTY = { name: "", department: "", manager: "" };
+const EMPTY = { name: "", department: "", location: "", manager: "" };
 
 export default function Employees() {
   const [rows, setRows] = useState([]);
@@ -62,7 +62,7 @@ export default function Employees() {
   }, [assets]);
 
   const startNew = () => { setEditing(null); setForm(EMPTY); setOpen(true); };
-  const startEdit = (r) => { setEditing(r); setForm({ name: r.name, department: r.department || "", manager: r.manager || "" }); setOpen(true); };
+  const startEdit = (r) => { setEditing(r); setForm({ name: r.name, department: r.department || "", location: r.location || "", manager: r.manager || "" }); setOpen(true); };
 
   const save = async () => {
     if (!form.name.trim()) { toast.error("Name is required"); return; }
@@ -89,7 +89,7 @@ export default function Employees() {
   };
 
   const downloadTemplate = () => {
-    const csv = "name,department,manager\nJane Doe,Engineering,John Smith\nBob Lee,Finance,Alice Ng\n";
+    const csv = "name,department,location,manager\nJane Doe,Engineering,London HQ,John Smith\nBob Lee,Finance,Sydney Office,Alice Ng\n";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -188,6 +188,10 @@ export default function Employees() {
               <Input value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} data-testid="emp-dept" />
             </div>
             <div>
+              <Label className="field-label mb-1 block">Location</Label>
+              <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} data-testid="emp-location" placeholder="e.g. London HQ" />
+            </div>
+            <div>
               <Label className="field-label mb-1 block">Manager</Label>
               <Input value={form.manager} onChange={(e) => setForm({ ...form, manager: e.target.value })} data-testid="emp-manager" />
             </div>
@@ -207,6 +211,7 @@ export default function Employees() {
             <DialogDescription>
               Upload a CSV with columns: <span className="font-mono text-ink">name</span>,{" "}
               <span className="font-mono text-ink">department</span>,{" "}
+              <span className="font-mono text-ink">location</span>,{" "}
               <span className="font-mono text-ink">manager</span>. Only <span className="font-mono">name</span> is required. Duplicates (same name) are skipped.
             </DialogDescription>
           </DialogHeader>
@@ -287,20 +292,21 @@ function ListView({ rows, loading, onEdit, onDelete }) {
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-surface-alt border-b border-line">
-            {["Name", "Department", "Manager", ""].map((h) => (
+            {["Name", "Department", "Location", "Manager", ""].map((h) => (
               <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-3 px-4">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {loading && <tr><td colSpan={4} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
+          {loading && <tr><td colSpan={5} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
           {!loading && rows.length === 0 && (
-            <tr><td colSpan={4} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
+            <tr><td colSpan={5} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
           )}
           {rows.map((r) => (
             <tr key={r.id} className="border-b border-line hover:bg-surface-alt" data-testid={`emp-row-${r.id}`}>
               <td className="py-3 px-4 text-ink font-medium">{r.name}</td>
               <td className="py-3 px-4 text-ink-muted">{r.department || "—"}</td>
+              <td className="py-3 px-4 text-ink-muted">{r.location || "—"}</td>
               <td className="py-3 px-4 text-ink-muted">{r.manager || "—"}</td>
               <td className="py-3 px-4 text-right space-x-3">
                 <button onClick={() => onEdit(r)} className="text-ink-muted hover:text-ink text-xs inline-flex items-center gap-1" data-testid={`edit-emp-${r.id}`}>
@@ -324,15 +330,15 @@ function SpreadsheetView({ rows, loading, assetsByEmployee, catMap }) {
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="bg-surface-alt border-b border-line sticky top-0">
-            {["Employee", "Department", "Manager", "# Items", "Equipment"].map((h) => (
+            {["Employee", "Department", "Location", "Manager", "# Items", "Equipment"].map((h) => (
               <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-3 px-4 border-r border-line last:border-r-0">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {loading && <tr><td colSpan={5} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
+          {loading && <tr><td colSpan={6} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
           {!loading && rows.length === 0 && (
-            <tr><td colSpan={5} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
+            <tr><td colSpan={6} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
           )}
           {rows.map((r) => {
             const items = assetsByEmployee[r.id] || [];
@@ -340,6 +346,7 @@ function SpreadsheetView({ rows, loading, assetsByEmployee, catMap }) {
               <tr key={r.id} className="border-b border-line align-top hover:bg-surface-alt" data-testid={`sheet-row-${r.id}`}>
                 <td className="py-3 px-4 text-ink font-medium border-r border-line whitespace-nowrap">{r.name}</td>
                 <td className="py-3 px-4 text-ink-muted border-r border-line whitespace-nowrap">{r.department || "—"}</td>
+                <td className="py-3 px-4 text-ink-muted border-r border-line whitespace-nowrap">{r.location || "—"}</td>
                 <td className="py-3 px-4 text-ink-muted border-r border-line whitespace-nowrap">{r.manager || "—"}</td>
                 <td className="py-3 px-4 font-mono text-ink border-r border-line text-center">{items.length}</td>
                 <td className="py-3 px-4">
