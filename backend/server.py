@@ -12,7 +12,7 @@ from typing import List, Optional, Literal
 
 import bcrypt
 import jwt
-from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query
+from fastapi import FastAPI, APIRouter, HTTPException, Depends, Request, Response, Query, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
 from pymongo import ReturnDocument
@@ -273,6 +273,69 @@ async def delete_employee(eid: str, _=Depends(get_current_user)):
     await db.assets.update_many({"assigned_to_id": eid}, {"$set": {"assigned_to_id": None}})
     await db.employees.delete_one({"id": eid})
     return {"ok": True}
+
+
+@api.post("/employees/import")
+async def import_employees(file: UploadFile = File(...), _=Depends(get_current_user)):
+    import csv, io
+    if not file.filename.lower().endswith(".csv"):
+        raise HTTPException(400, "File must be a .csv")
+    raw = await file.read()
+    try:
+        text = raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        text = raw.decode("latin-1", errors="replace")
+    reader = csv.DictReader(io.StringIO(text))
+    # normalise headers to lowercase
+    if not reader.fieldnames:
+        raise HTTPException(400, "CSV has no header row")
+    header_map = {h: (h or "").strip().lower() for h in reader.fieldnames}
+    if "name" not in header_map.values():
+        raise HTTPException(400, "CSV must contain a 'name' column")
+
+    existing_names = {
+        e["name"].strip().lower()
+        for e in await db.employees.find({}, {"_id": 0, "name": 1}).to_list(10000)
+    }
+    created = 0
+    skipped_duplicates = 0
+    skipped_blank = 0
+    errors: List[str] = []
+    to_insert = []
+    seen_in_file = set()
+    for i, row in enumerate(reader, start=2):
+        normalised = {header_map.get(k, k.lower()): (v or "").strip() for k, v in row.items()}
+        name = normalised.get("name", "")
+        if not name:
+            skipped_blank += 1
+            continue
+        key = name.lower()
+        if key in existing_names or key in seen_in_file:
+            skipped_duplicates += 1
+            continue
+        seen_in_file.add(key)
+        to_insert.append(
+            {
+                "id": str(uuid.uuid4()),
+                "name": name,
+                "department": normalised.get("department", ""),
+                "manager": normalised.get("manager", ""),
+            }
+        )
+        if len(to_insert) > 5000:
+            errors.append(f"File too large (row {i}); import limited to 5000 new rows per file")
+            break
+
+    if to_insert:
+        await db.employees.insert_many(to_insert)
+        created = len(to_insert)
+
+    return {
+        "created": created,
+        "skipped_duplicates": skipped_duplicates,
+        "skipped_blank": skipped_blank,
+        "errors": errors,
+    }
 
 
 # ---------- Locations ----------
