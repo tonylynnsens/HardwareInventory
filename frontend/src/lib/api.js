@@ -1,0 +1,26 @@
+import axios from "axios";
+
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+export const API = `${BACKEND_URL}/api`;
+
+export const api = axios.create({
+  baseURL: API,
+  withCredentials: true,
+  headers: { "Content-Type": "application/json" },
+});
+
+export function formatApiError(err) {
+  const detail = err?.response?.data?.detail;
+  if (detail == null) return err?.message || "Something went wrong";
+  if (typeof detail === "string") return detail;
+  if (Array.isArray(detail))
+    return detail
+      .map((e) => (e && typeof e.msg === "string" ? e.msg : JSON.stringify(e)))
+      .filter(Boolean)
+      .join(" ");
+  if (detail && typeof detail.msg === "string") return detail.msg;
+  return String(detail);
+}
+
+export const LOGO_URL =
+  "https://customer-assets.emergentagent.com/job_hardware-inventory-22/artifacts/c9ejrxq4_Sens_logo.png";
