@@ -30,9 +30,11 @@ export default function Assets() {
   const [categories, setCategories] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [q, setQ] = useState(sp.get("q") || "");
   const [deptFilter, setDeptFilter] = useState(sp.get("department") || "all");
+  const [companyFilter, setCompanyFilter] = useState(sp.get("company_id") || "all");
 
   const statusParam = sp.get("status");
   const warrantyParam = sp.get("warranty_expiring");
@@ -51,17 +53,20 @@ export default function Assets() {
     if (warrantyParam) params.warranty_expiring = true;
     if (q) params.q = q;
     if (deptFilter && deptFilter !== "all") params.department = deptFilter;
+    if (companyFilter && companyFilter !== "all") params.company_id = companyFilter;
     try {
-      const [aRes, cRes, eRes, lRes] = await Promise.all([
+      const [aRes, cRes, eRes, lRes, coRes] = await Promise.all([
         api.get("/assets", { params }),
         api.get("/categories"),
         api.get("/employees"),
         api.get("/locations"),
+        api.get("/companies"),
       ]);
       setAssets(aRes.data);
       setCategories(cRes.data);
       setEmployees(eRes.data);
       setLocations(lRes.data);
+      setCompanies(coRes.data);
     } finally {
       setLoading(false);
     }
@@ -70,7 +75,7 @@ export default function Assets() {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [statusParam, warrantyParam, deptFilter]);
+  }, [statusParam, warrantyParam, deptFilter, companyFilter]);
 
   const catMap = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c.name])), [categories]);
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
@@ -141,13 +146,24 @@ export default function Assets() {
             />
           </div>
           <Select value={deptFilter} onValueChange={setDeptFilter}>
-            <SelectTrigger className="h-9 w-48 rounded-sm" data-testid="dept-filter">
+            <SelectTrigger className="h-9 w-44 rounded-sm" data-testid="dept-filter">
               <SelectValue placeholder="All Departments" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Departments</SelectItem>
               {departments.map((d) => (
                 <SelectItem key={d} value={d}>{d}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={companyFilter} onValueChange={setCompanyFilter}>
+            <SelectTrigger className="h-9 w-52 rounded-sm" data-testid="company-filter">
+              <SelectValue placeholder="All Companies" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Companies</SelectItem>
+              {companies.map((c) => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
               ))}
             </SelectContent>
           </Select>

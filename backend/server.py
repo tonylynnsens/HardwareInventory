@@ -115,6 +115,7 @@ class EmployeeIn(BaseModel):
     name: str
     department: Optional[str] = ""
     location: Optional[str] = ""
+    company_id: Optional[str] = None
     manager: Optional[str] = ""
 
 
@@ -307,6 +308,10 @@ async def import_employees(file: UploadFile = File(...), _=Depends(get_current_u
         e["name"].strip().lower()
         for e in await db.employees.find({}, {"_id": 0, "name": 1}).to_list(10000)
     }
+    company_lookup = {
+        c["name"].strip().lower(): c["id"]
+        for c in await db.companies.find({}, {"_id": 0, "name": 1, "id": 1}).to_list(1000)
+    }
     created = 0
     skipped_duplicates = 0
     skipped_blank = 0
@@ -324,12 +329,17 @@ async def import_employees(file: UploadFile = File(...), _=Depends(get_current_u
             skipped_duplicates += 1
             continue
         seen_in_file.add(key)
+        company_name = normalised.get("company", "")
+        company_id = company_lookup.get(company_name.lower()) if company_name else None
+        if company_name and not company_id:
+            errors.append(f"Row {i}: company '{company_name}' not found, employee created without it")
         to_insert.append(
             {
                 "id": str(uuid.uuid4()),
                 "name": name,
                 "department": normalised.get("department", ""),
                 "location": normalised.get("location", ""),
+                "company_id": company_id,
                 "manager": normalised.get("manager", ""),
             }
         )

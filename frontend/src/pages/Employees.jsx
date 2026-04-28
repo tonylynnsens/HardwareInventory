@@ -7,17 +7,21 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Pencil, Trash2, Upload, Download, FileSpreadsheet, Rows3, Table2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { toast } from "sonner";
 
-const EMPTY = { name: "", department: "", location: "", manager: "" };
+const EMPTY = { name: "", department: "", location: "", company_id: "", manager: "" };
 
 export default function Employees() {
   const [rows, setRows] = useState([]);
   const [assets, setAssets] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState("list"); // list | spreadsheet
 
@@ -34,14 +38,16 @@ export default function Employees() {
   const load = async () => {
     setLoading(true);
     try {
-      const [e, a, c] = await Promise.all([
+      const [e, a, c, co] = await Promise.all([
         api.get("/employees"),
         api.get("/assets"),
         api.get("/categories"),
+        api.get("/companies"),
       ]);
       setRows(e.data);
       setAssets(a.data);
       setCategories(c.data);
+      setCompanies(co.data);
     } finally {
       setLoading(false);
     }
@@ -50,6 +56,7 @@ export default function Employees() {
   useEffect(() => { load(); }, []);
 
   const catMap = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c.name])), [categories]);
+  const coMap = useMemo(() => Object.fromEntries(companies.map((c) => [c.id, c.name])), [companies]);
 
   // employee_id → [{asset_id, category, model, manufacturer, status}]
   const assetsByEmployee = useMemo(() => {
@@ -62,16 +69,17 @@ export default function Employees() {
   }, [assets]);
 
   const startNew = () => { setEditing(null); setForm(EMPTY); setOpen(true); };
-  const startEdit = (r) => { setEditing(r); setForm({ name: r.name, department: r.department || "", location: r.location || "", manager: r.manager || "" }); setOpen(true); };
+  const startEdit = (r) => { setEditing(r); setForm({ name: r.name, department: r.department || "", location: r.location || "", company_id: r.company_id || "", manager: r.manager || "" }); setOpen(true); };
 
   const save = async () => {
     if (!form.name.trim()) { toast.error("Name is required"); return; }
+    const payload = { ...form, company_id: form.company_id || null };
     try {
       if (editing) {
-        await api.put(`/employees/${editing.id}`, form);
+        await api.put(`/employees/${editing.id}`, payload);
         toast.success("Employee updated");
       } else {
-        await api.post("/employees", form);
+        await api.post("/employees", payload);
         toast.success("Employee added");
       }
       setOpen(false);
@@ -89,7 +97,7 @@ export default function Employees() {
   };
 
   const downloadTemplate = () => {
-    const csv = "name,department,location,manager\nJane Doe,Engineering,London HQ,John Smith\nBob Lee,Finance,Sydney Office,Alice Ng\n";
+    const csv = "name,department,location,company,manager\nJane Doe,Engineering,London HQ,Sens Utvikling AS,John Smith\nBob Lee,Finance,Sydney Office,Sens Gruppen AS,Alice Ng\n";
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -164,13 +172,14 @@ export default function Employees() {
       </div>
 
       {view === "list" ? (
-        <ListView rows={rows} loading={loading} onEdit={startEdit} onDelete={del} />
+        <ListView rows={rows} loading={loading} onEdit={startEdit} onDelete={del} coMap={coMap} />
       ) : (
         <SpreadsheetView
           rows={rows}
           loading={loading}
           assetsByEmployee={assetsByEmployee}
           catMap={catMap}
+          coMap={coMap}
         />
       )}
 
@@ -190,6 +199,18 @@ export default function Employees() {
             <div>
               <Label className="field-label mb-1 block">Location</Label>
               <Input value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} data-testid="emp-location" placeholder="e.g. London HQ" />
+            </div>
+            <div>
+              <Label className="field-label mb-1 block">Company</Label>
+              <Select value={form.company_id || "__none__"} onValueChange={(v) => setForm({ ...form, company_id: v === "__none__" ? "" : v })}>
+                <SelectTrigger data-testid="emp-company"><SelectValue placeholder="None" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">None</SelectItem>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label className="field-label mb-1 block">Manager</Label>
@@ -286,27 +307,28 @@ export default function Employees() {
   );
 }
 
-function ListView({ rows, loading, onEdit, onDelete }) {
+function ListView({ rows, loading, onEdit, onDelete, coMap }) {
   return (
     <div className="panel overflow-hidden" data-testid="employees-table">
       <table className="w-full text-sm">
         <thead>
           <tr className="bg-surface-alt border-b border-line">
-            {["Name", "Department", "Location", "Manager", ""].map((h) => (
+            {["Name", "Department", "Location", "Company", "Manager", ""].map((h) => (
               <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-3 px-4">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {loading && <tr><td colSpan={5} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
+          {loading && <tr><td colSpan={6} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
           {!loading && rows.length === 0 && (
-            <tr><td colSpan={5} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
+            <tr><td colSpan={6} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
           )}
           {rows.map((r) => (
             <tr key={r.id} className="border-b border-line hover:bg-surface-alt" data-testid={`emp-row-${r.id}`}>
               <td className="py-3 px-4 text-ink font-medium">{r.name}</td>
               <td className="py-3 px-4 text-ink-muted">{r.department || "—"}</td>
               <td className="py-3 px-4 text-ink-muted">{r.location || "—"}</td>
+              <td className="py-3 px-4 text-ink-muted">{coMap[r.company_id] || "—"}</td>
               <td className="py-3 px-4 text-ink-muted">{r.manager || "—"}</td>
               <td className="py-3 px-4 text-right space-x-3">
                 <button onClick={() => onEdit(r)} className="text-ink-muted hover:text-ink text-xs inline-flex items-center gap-1" data-testid={`edit-emp-${r.id}`}>
@@ -324,21 +346,21 @@ function ListView({ rows, loading, onEdit, onDelete }) {
   );
 }
 
-function SpreadsheetView({ rows, loading, assetsByEmployee, catMap }) {
+function SpreadsheetView({ rows, loading, assetsByEmployee, catMap, coMap }) {
   return (
     <div className="panel overflow-auto" data-testid="employees-spreadsheet">
       <table className="w-full text-sm border-collapse">
         <thead>
           <tr className="bg-surface-alt border-b border-line sticky top-0">
-            {["Employee", "Department", "Location", "Manager", "# Items", "Equipment"].map((h) => (
+            {["Employee", "Department", "Location", "Company", "Manager", "# Items", "Equipment"].map((h) => (
               <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-3 px-4 border-r border-line last:border-r-0">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {loading && <tr><td colSpan={6} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
+          {loading && <tr><td colSpan={7} className="text-center py-10 text-ink-muted">Loading…</td></tr>}
           {!loading && rows.length === 0 && (
-            <tr><td colSpan={6} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
+            <tr><td colSpan={7} className="text-center py-16 text-ink-muted">No employees yet.</td></tr>
           )}
           {rows.map((r) => {
             const items = assetsByEmployee[r.id] || [];
@@ -347,6 +369,7 @@ function SpreadsheetView({ rows, loading, assetsByEmployee, catMap }) {
                 <td className="py-3 px-4 text-ink font-medium border-r border-line whitespace-nowrap">{r.name}</td>
                 <td className="py-3 px-4 text-ink-muted border-r border-line whitespace-nowrap">{r.department || "—"}</td>
                 <td className="py-3 px-4 text-ink-muted border-r border-line whitespace-nowrap">{r.location || "—"}</td>
+                <td className="py-3 px-4 text-ink-muted border-r border-line whitespace-nowrap">{coMap[r.company_id] || "—"}</td>
                 <td className="py-3 px-4 text-ink-muted border-r border-line whitespace-nowrap">{r.manager || "—"}</td>
                 <td className="py-3 px-4 font-mono text-ink border-r border-line text-center">{items.length}</td>
                 <td className="py-3 px-4">
