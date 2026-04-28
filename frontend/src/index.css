@@ -81,5 +81,18 @@
   tr { page-break-inside: avoid; page-break-after: auto; }
   thead { display: table-header-group; }
   .print-break { page-break-before: always; }
-  @page { margin: 14mm; }
+  /* Hide the in-app footer; we render a printed footer via body::after */
+  [data-testid="app-footer"] { display: none !important; }
+  body::after {
+    content: "Copyright © 2026 — Sens Gruppen AS · Internal use only";
+    position: fixed;
+    bottom: 4mm;
+    left: 0;
+    right: 0;
+    text-align: center;
+    font-size: 8.5pt;
+    color: #888;
+    letter-spacing: 0.04em;
+  }
+  @page { margin: 14mm 14mm 22mm 14mm; }
 }
