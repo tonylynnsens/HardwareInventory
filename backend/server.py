@@ -130,6 +130,14 @@ class LocationOut(LocationIn):
     id: str
 
 
+class CompanyIn(BaseModel):
+    name: str
+
+
+class CompanyOut(CompanyIn):
+    id: str
+
+
 class AssetIn(BaseModel):
     # Identification
     asset_id: Optional[str] = None  # auto-generate if empty
@@ -141,6 +149,7 @@ class AssetIn(BaseModel):
     assigned_to_id: Optional[str] = None
     department: Optional[str] = ""
     location_id: Optional[str] = None
+    company_id: Optional[str] = None
     status: Literal["In Use", "In Storage", "Loaned", "Under Repair", "Retired"] = "In Storage"
     assigned_date: Optional[str] = None
     # Technical (laptop/desktop only)
@@ -369,6 +378,35 @@ async def delete_location(lid: str, _=Depends(get_current_user)):
     return {"ok": True}
 
 
+# ---------- Companies ----------
+@api.get("/companies", response_model=List[CompanyOut])
+async def list_companies(_=Depends(get_current_user)):
+    return await db.companies.find({}, {"_id": 0}).sort("name", 1).to_list(200)
+
+
+@api.post("/companies", response_model=CompanyOut)
+async def create_company(body: CompanyIn, _=Depends(get_current_user)):
+    doc = {"id": str(uuid.uuid4()), **body.model_dump()}
+    await db.companies.insert_one(doc)
+    return {k: v for k, v in doc.items() if k != "_id"}
+
+
+@api.put("/companies/{cid}", response_model=CompanyOut)
+async def update_company(cid: str, body: CompanyIn, _=Depends(get_current_user)):
+    await db.companies.update_one({"id": cid}, {"$set": body.model_dump()})
+    doc = await db.companies.find_one({"id": cid}, {"_id": 0})
+    if not doc:
+        raise HTTPException(404, "Not found")
+    return doc
+
+
+@api.delete("/companies/{cid}")
+async def delete_company(cid: str, _=Depends(get_current_user)):
+    await db.assets.update_many({"company_id": cid}, {"$set": {"company_id": None}})
+    await db.companies.delete_one({"id": cid})
+    return {"ok": True}
+
+
 # ---------- Assets ----------
 async def next_asset_id(prefix: str) -> str:
     doc = await db.counters.find_one_and_update(
@@ -385,6 +423,7 @@ async def list_assets(
     status: Optional[str] = None,
     category_id: Optional[str] = None,
     department: Optional[str] = None,
+    company_id: Optional[str] = None,
     warranty_expiring: Optional[bool] = None,
     q: Optional[str] = None,
     _=Depends(get_current_user),
@@ -396,6 +435,8 @@ async def list_assets(
         query["category_id"] = category_id
     if department:
         query["department"] = department
+    if company_id:
+        query["company_id"] = company_id
     if warranty_expiring:
         today = datetime.now(timezone.utc).date().isoformat()
         in_30 = (datetime.now(timezone.utc).date() + timedelta(days=30)).isoformat()
@@ -533,6 +574,14 @@ async def dashboard_stats(_=Depends(get_current_user)):
     by_cat = []
     async for row in db.assets.aggregate(pipeline2):
         by_cat.append({"category": cat_map.get(row["_id"], "Unknown"), "count": row["count"]})
+    # assets by company
+    pipeline3 = [{"$group": {"_id": "$company_id", "count": {"$sum": 1}}}]
+    co_map = {c["id"]: c["name"] async for c in db.companies.find({}, {"_id": 0})}
+    by_company = []
+    async for row in db.assets.aggregate(pipeline3):
+        label = co_map.get(row["_id"], "Unassigned") if row["_id"] else "Unassigned"
+        by_company.append({"company": label, "count": row["count"]})
+    by_company.sort(key=lambda x: -x["count"])
     return {
         "total": total,
         "in_use": in_use,
@@ -543,6 +592,7 @@ async def dashboard_stats(_=Depends(get_current_user)):
         "warranty_expiring": warranty_expiring,
         "by_department": by_dept,
         "by_category": by_cat,
+        "by_company": by_company,
     }
 
 
@@ -552,10 +602,18 @@ DEFAULT_CATEGORIES = [
     ("Desktop", "DES"),
     ("Monitor", "MON"),
     ("Printer", "PRN"),
+    ("TV", "TVS"),
     ("Mobile", "MOB"),
     ("Headphones", "HDP"),
     ("Keyboard/Mouse", "KBM"),
     ("Docking", "DCK"),
+]
+
+DEFAULT_COMPANIES = [
+    "Sens Utvikling AS",
+    "Sens Arbeidsinkludering AS",
+    "Sens Gruppen AS",
+    "Sens Eiendom AS",
 ]
 
 
@@ -566,6 +624,13 @@ async def seed_categories():
             await db.categories.insert_one(
                 {"id": str(uuid.uuid4()), "name": name, "prefix": prefix}
             )
+
+
+async def seed_companies():
+    for name in DEFAULT_COMPANIES:
+        existing = await db.companies.find_one({"name": name})
+        if not existing:
+            await db.companies.insert_one({"id": str(uuid.uuid4()), "name": name})
 
 
 async def seed_admins():
@@ -592,7 +657,9 @@ async def on_startup():
     await db.users.create_index("username", unique=True)
     await db.assets.create_index("asset_id", unique=True)
     await db.categories.create_index("name", unique=True)
+    await db.companies.create_index("name", unique=True)
     await seed_categories()
+    await seed_companies()
     await seed_admins()
     logger.info("Sens IT Inventory ready.")
 

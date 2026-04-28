@@ -31,6 +31,7 @@ const EMPTY = {
   assigned_to_id: "",
   department: "",
   location_id: "",
+  company_id: "",
   status: "In Storage",
   assigned_date: "",
   operating_system: "",
@@ -92,17 +93,20 @@ export default function AssetDetail() {
   const [categories, setCategories] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [locations, setLocations] = useState([]);
+  const [companies, setCompanies] = useState([]);
   const [maintenance, setMaintenance] = useState([]);
 
   const loadRefs = async () => {
-    const [c, e, l] = await Promise.all([
+    const [c, e, l, co] = await Promise.all([
       api.get("/categories"),
       api.get("/employees"),
       api.get("/locations"),
+      api.get("/companies"),
     ]);
     setCategories(c.data);
     setEmployees(e.data);
     setLocations(l.data);
+    setCompanies(co.data);
   };
 
   const loadAsset = async () => {
@@ -132,6 +136,7 @@ export default function AssetDetail() {
   const catMap = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c])), [categories]);
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
   const locMap = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
+  const coMap = useMemo(() => Object.fromEntries(companies.map((c) => [c.id, c.name])), [companies]);
 
   const currentCat = catMap[form.category_id];
   const showTech = currentCat && TECH_CATEGORY_NAMES.includes(currentCat.name);
@@ -156,7 +161,7 @@ export default function AssetDetail() {
     try {
       const payload = { ...form };
       // empty strings → null for relations/dates/numbers
-      ["assigned_to_id", "location_id"].forEach((k) => {
+      ["assigned_to_id", "location_id", "company_id"].forEach((k) => {
         if (!payload[k]) payload[k] = null;
       });
       ["assigned_date", "purchase_date", "warranty_expiration_date", "last_audit_date", "expected_replacement_date"].forEach((k) => {
@@ -360,6 +365,17 @@ export default function AssetDetail() {
                   </SelectContent>
                 </Select>
               </FormField>
+              <FormField label="Company (Owner)">
+                <Select value={form.company_id || "__none__"} onValueChange={(v) => set("company_id", v === "__none__" ? "" : v)}>
+                  <SelectTrigger data-testid="field-company"><SelectValue placeholder="None" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">None</SelectItem>
+                    {companies.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </FormField>
               <FormField label="Status">
                 <Select value={form.status} onValueChange={(v) => set("status", v)}>
                   <SelectTrigger data-testid="field-status"><SelectValue /></SelectTrigger>
@@ -377,6 +393,7 @@ export default function AssetDetail() {
               <ReadField label="Assigned To" value={empMap[form.assigned_to_id]?.name} />
               <ReadField label="Department" value={form.department} />
               <ReadField label="Location" value={locMap[form.location_id]} />
+              <ReadField label="Company (Owner)" value={coMap[form.company_id]} />
               <ReadField label="Status" value={<span className={`status-pill ${STATUS_STYLE[form.status] || ""}`}>{form.status}</span>} />
               <ReadField label="Assigned Date" value={fmtDate(form.assigned_date)} />
             </>

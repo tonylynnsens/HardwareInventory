@@ -10,6 +10,7 @@ import {
   Settings as SettingsIcon,
   LogOut,
   FileText,
+  Building2,
 } from "lucide-react";
 import { useAuth } from "@/context/AuthContext";
 import { LOGO_URL } from "@/lib/api";
@@ -20,6 +21,7 @@ const NAV = [
   { to: "/maintenance", label: "Maintenance", icon: Wrench },
   { to: "/employees", label: "Employees", icon: Users },
   { to: "/locations", label: "Locations", icon: MapPin },
+  { to: "/companies", label: "Companies", icon: Building2 },
   { to: "/categories", label: "Categories", icon: Tags },
   { to: "/reports", label: "Reports", icon: FileText },
   { to: "/settings", label: "Settings", icon: SettingsIcon },

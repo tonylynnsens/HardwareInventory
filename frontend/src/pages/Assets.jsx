@@ -75,6 +75,7 @@ export default function Assets() {
   const catMap = useMemo(() => Object.fromEntries(categories.map((c) => [c.id, c.name])), [categories]);
   const empMap = useMemo(() => Object.fromEntries(employees.map((e) => [e.id, e])), [employees]);
   const locMap = useMemo(() => Object.fromEntries(locations.map((l) => [l.id, l.name])), [locations]);
+  const coMap = useMemo(() => Object.fromEntries(companies.map((c) => [c.id, c.name])), [companies]);
 
   const departments = useMemo(() => {
     const s = new Set();
@@ -157,7 +158,7 @@ export default function Assets() {
         <table className="w-full text-sm">
           <thead>
             <tr className="bg-surface-alt border-b border-line">
-              {["Asset ID", "Category", "Manufacturer / Model", "Assigned To", "Department", "Location", "Status", "Warranty"].map(
+              {["Asset ID", "Category", "Manufacturer / Model", "Assigned To", "Department", "Company", "Location", "Status", "Warranty"].map(
                 (h) => (
                   <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-3 px-4">
                     {h}
@@ -168,11 +169,11 @@ export default function Assets() {
           </thead>
           <tbody>
             {loading && (
-              <tr><td colSpan={8} className="text-center py-10 text-ink-muted">Loading…</td></tr>
+              <tr><td colSpan={9} className="text-center py-10 text-ink-muted">Loading…</td></tr>
             )}
             {!loading && assets.length === 0 && (
               <tr>
-                <td colSpan={8} className="text-center py-16 text-ink-muted">
+                <td colSpan={9} className="text-center py-16 text-ink-muted">
                   <div className="font-medium text-ink mb-1">No assets yet</div>
                   <div className="text-xs">Click "New Asset" to add your first record.</div>
                 </td>
@@ -197,6 +198,7 @@ export default function Assets() {
                 </td>
                 <td className="py-3 px-4 text-ink">{empMap[a.assigned_to_id]?.name || "—"}</td>
                 <td className="py-3 px-4 text-ink-muted">{a.department || "—"}</td>
+                <td className="py-3 px-4 text-ink-muted">{coMap[a.company_id] || "—"}</td>
                 <td className="py-3 px-4 text-ink-muted">{locMap[a.location_id] || "—"}</td>
                 <td className="py-3 px-4">
                   <span className={`status-pill ${STATUS_STYLE[a.status] || ""}`}>

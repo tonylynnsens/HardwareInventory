@@ -80,7 +80,30 @@ export default function Dashboard() {
         })}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mt-8">
+        <div className="panel p-6" data-testid="by-company-panel">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-heading text-lg font-semibold">Assets by Company</h3>
+          </div>
+          {stats && (stats.by_company?.length || 0) === 0 && (
+            <div className="text-sm text-ink-muted">No company data yet.</div>
+          )}
+          <div className="space-y-3">
+            {stats?.by_company?.map((row) => (
+              <div key={row.company} className="flex items-center gap-3">
+                <div className="w-40 text-sm text-ink truncate" title={row.company}>{row.company}</div>
+                <div className="flex-1 h-2 bg-slate-100 rounded-sm overflow-hidden">
+                  <div
+                    className="h-full bg-brand"
+                    style={{ width: `${Math.min(100, (row.count / Math.max(1, stats.total)) * 100)}%` }}
+                  />
+                </div>
+                <div className="w-10 text-right font-mono text-sm text-ink">{row.count}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
         <div className="panel p-6" data-testid="by-category-panel">
           <div className="flex items-center justify-between mb-4">
             <h3 className="font-heading text-lg font-semibold">Assets by Category</h3>

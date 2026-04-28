@@ -3,20 +3,21 @@ import { api } from "@/lib/api";
 import Layout from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Printer, FileText, Users, Building2, LayoutGrid, ShieldAlert } from "lucide-react";
+import { Printer, FileText, Users, Building2, LayoutGrid, ShieldAlert, Briefcase } from "lucide-react";
 import { LOGO_URL } from "@/lib/api";
 import { fmtDate, STATUS_STYLE } from "@/lib/constants";
 
 const REPORTS = [
   { key: "employees", label: "Employees & Equipment", icon: Users, desc: "Every employee and the equipment currently assigned to them." },
   { key: "departments", label: "By Department", icon: Building2, desc: "Employees grouped by department, each with their assigned equipment." },
+  { key: "companies", label: "By Company", icon: Briefcase, desc: "All equipment grouped by the owning company (legal entity)." },
   { key: "categories", label: "Equipment by Category", icon: LayoutGrid, desc: "All equipment grouped by category (Laptop, Desktop, Monitor…)." },
   { key: "warranty", label: "Warranty Expiring (30 days)", icon: ShieldAlert, desc: "Assets whose warranty expires within the next 30 days." },
 ];
 
 export default function Reports() {
   const [tab, setTab] = useState("employees");
-  const [data, setData] = useState({ employees: [], assets: [], categories: [], locations: [] });
+  const [data, setData] = useState({ employees: [], assets: [], categories: [], locations: [], companies: [] });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -25,9 +26,10 @@ export default function Reports() {
       api.get("/assets"),
       api.get("/categories"),
       api.get("/locations"),
+      api.get("/companies"),
     ])
-      .then(([e, a, c, l]) =>
-        setData({ employees: e.data, assets: a.data, categories: c.data, locations: l.data })
+      .then(([e, a, c, l, co]) =>
+        setData({ employees: e.data, assets: a.data, categories: c.data, locations: l.data, companies: co.data })
       )
       .finally(() => setLoading(false));
   }, []);
@@ -35,6 +37,7 @@ export default function Reports() {
   const catMap = useMemo(() => Object.fromEntries(data.categories.map((c) => [c.id, c.name])), [data.categories]);
   const empMap = useMemo(() => Object.fromEntries(data.employees.map((e) => [e.id, e])), [data.employees]);
   const locMap = useMemo(() => Object.fromEntries(data.locations.map((l) => [l.id, l.name])), [data.locations]);
+  const coMap = useMemo(() => Object.fromEntries(data.companies.map((c) => [c.id, c.name])), [data.companies]);
   const assetsByEmp = useMemo(() => {
     const m = {};
     for (const a of data.assets) {
@@ -122,6 +125,7 @@ export default function Reports() {
 
           {tab === "employees" && <EmployeesReport employees={data.employees} assetsByEmp={assetsByEmp} catMap={catMap} />}
           {tab === "departments" && <DepartmentsReport employees={data.employees} assetsByEmp={assetsByEmp} catMap={catMap} />}
+          {tab === "companies" && <CompaniesReport assets={data.assets} companies={data.companies} catMap={catMap} empMap={empMap} locMap={locMap} />}
           {tab === "categories" && <CategoriesReport assets={data.assets} categories={data.categories} empMap={empMap} locMap={locMap} />}
           {tab === "warranty" && <WarrantyReport assets={data.assets} catMap={catMap} empMap={empMap} locMap={locMap} />}
         </div>
@@ -374,3 +378,67 @@ function SummaryBar({ items }) {
     </div>
   );
 }
+
+function CompaniesReport({ assets, companies, catMap, empMap, locMap }) {
+  const groups = useMemo(() => {
+    const m = {};
+    for (const c of companies) m[c.id] = { name: c.name, assets: [] };
+    m["__none__"] = { name: "(No Company / Unassigned)", assets: [] };
+    for (const a of assets) (m[a.company_id]?.assets || m["__none__"].assets).push(a);
+    return Object.values(m).sort((a, b) => {
+      if (a.name.startsWith("(")) return 1;
+      if (b.name.startsWith("(")) return -1;
+      return a.name.localeCompare(b.name);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assets, companies]);
+
+  return (
+    <div className="space-y-10">
+      <SummaryBar items={[
+        { label: "Companies", value: companies.length },
+        { label: "Total Assets", value: assets.length },
+        { label: "Unassigned", value: assets.filter((a) => !a.company_id).length },
+      ]} />
+      {groups.map((g, idx) => (
+        <section key={g.name} className={idx > 0 ? "print-break" : ""}>
+          <div className="flex items-center justify-between border-b border-line pb-2 mb-4">
+            <h3 className="font-heading text-lg font-semibold text-ink">{g.name}</h3>
+            <div className="text-xs text-ink-muted font-mono">{g.assets.length} assets</div>
+          </div>
+          {g.assets.length === 0 ? (
+            <div className="text-ink-muted text-sm italic">No assets recorded for this company.</div>
+          ) : (
+            <table className="w-full text-sm border-collapse">
+              <thead>
+                <tr className="bg-surface-alt">
+                  {["Asset ID", "Category", "Manufacturer / Model", "Assigned To", "Location", "Status", "Warranty"].map((h) => (
+                    <th key={h} className="text-left text-[11px] font-semibold uppercase tracking-wider text-ink-muted py-2 px-3 border border-line">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {g.assets
+                  .sort((x, y) => x.asset_id.localeCompare(y.asset_id))
+                  .map((a) => (
+                  <tr key={a.id}>
+                    <td className="py-2 px-3 border border-line font-mono text-brand">{a.asset_id}</td>
+                    <td className="py-2 px-3 border border-line text-ink-muted">{catMap[a.category_id] || "—"}</td>
+                    <td className="py-2 px-3 border border-line text-ink">{a.manufacturer} {a.model}</td>
+                    <td className="py-2 px-3 border border-line text-ink-muted">{empMap[a.assigned_to_id]?.name || "—"}</td>
+                    <td className="py-2 px-3 border border-line text-ink-muted">{locMap[a.location_id] || "—"}</td>
+                    <td className="py-2 px-3 border border-line">
+                      <span className={`status-pill ${STATUS_STYLE[a.status] || ""}`}>{a.status}</span>
+                    </td>
+                    <td className="py-2 px-3 border border-line text-ink-muted text-xs">{fmtDate(a.warranty_expiration_date)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+

@@ -13,6 +13,7 @@ import Locations from "@/pages/Locations";
 import Categories from "@/pages/Categories";
 import Settings from "@/pages/Settings";
 import Reports from "@/pages/Reports";
+import Companies from "@/pages/Companies";
 
 function Protected({ children }) {
   return <ProtectedRoute>{children}</ProtectedRoute>;
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/maintenance" element={<Protected><Maintenance /></Protected>} />
           <Route path="/employees" element={<Protected><Employees /></Protected>} />
           <Route path="/locations" element={<Protected><Locations /></Protected>} />
+          <Route path="/companies" element={<Protected><Companies /></Protected>} />
           <Route path="/categories" element={<Protected><Categories /></Protected>} />
           <Route path="/reports" element={<Protected><Reports /></Protected>} />
           <Route path="/settings" element={<Protected><Settings /></Protected>} />
