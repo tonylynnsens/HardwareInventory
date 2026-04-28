@@ -142,6 +142,9 @@ export default function Login() {
           <div className="mt-10 text-[11px] uppercase tracking-[0.16em] text-ink-muted">
             Internal use only · Sens IT
           </div>
+          <div className="mt-6 text-[11px] text-ink-muted" data-testid="login-footer">
+            Copyright &copy; 2026 — Sens Gruppen AS
+          </div>
         </div>
       </div>
     </div>

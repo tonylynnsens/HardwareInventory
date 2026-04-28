@@ -8,11 +8,20 @@ export default function Layout({ children }) {
       <Sidebar />
       <main
         data-testid="main-content"
-        className="flex-1 overflow-auto"
+        className="flex-1 overflow-auto flex flex-col"
       >
-        <div className="max-w-[1400px] mx-auto px-8 py-8 animate-fade-in-up">
+        <div className="max-w-[1400px] w-full mx-auto px-8 py-8 animate-fade-in-up flex-1">
           {children}
         </div>
+        <footer
+          data-testid="app-footer"
+          className="border-t border-line py-4 px-8 text-[11px] text-ink-muted tracking-wider"
+        >
+          <div className="max-w-[1400px] mx-auto flex items-center justify-between">
+            <span>Copyright &copy; 2026 — Sens Gruppen AS</span>
+            <span className="uppercase tracking-[0.18em]">Internal use only</span>
+          </div>
+        </footer>
       </main>
       <Toaster position="top-right" richColors closeButton />
     </div>
